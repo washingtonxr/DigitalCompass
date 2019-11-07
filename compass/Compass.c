@@ -22,7 +22,7 @@
 static Compass_dev_t *Compass_dev;
 static mag4com_info_t *Compass_info;
 unsigned char Compass_ReadEn;
-static Compass_info_t Compass_Data;
+Compass_info_t Compass_Data;
 
 /**
  * This is a function used to register resources, driver and algorithm.
@@ -77,6 +77,8 @@ unsigned char Compass_Init(void)
         dbg_err("mdata_init failed.\n");
     }
     
+    /* Move function of calibnation to GUI page precess. */
+#if 0
     /* Start first magnetic calibnation. */
     TickType_t Compass_Tickstart, Compass_Tickend;
     Compass_Tickstart = xTaskGetTickCount();
@@ -88,7 +90,11 @@ unsigned char Compass_Init(void)
     
     Compass_Tickend = xTaskGetTickCount();
     dbg_info("Compass_Calibnation use time = %d\n", Compass_Tickend - Compass_Tickstart);
+#else
+    vTaskDelay(100);
+#endif
 
+    /* Push module to sleep. */
     Compass_Sleep();
     
     return MAG_OK;
@@ -187,39 +193,21 @@ float Compass_Direction(axis_du_t *GDB, Compass_info_t *CDB)
     if(ret != MAG_OK){
         if(ret == MAG_ORANG){
             dbg_err("Need to Calibnation(%d).\n", ret);
-            Compass_info->state = UNLOCKED;
         }else{
             dbg_err("mdata_detect_direction failed(%d).\n", ret);
-            Compass_info->state = UNLOCKED;
         }
+        Compass_info->calib_status = UNLOCKED;
+        Compass_info->data_state = UNLOCKED;
+    }else{
+        if(LOCKED == Compass_info->calib_status)
+            Compass_info->data_state = LOCKED;
     }
     
-    Compass_info->state = LOCKED;
-
-    CDB->state = Compass_info->state;
+    /* Update compass information to cdb. */
+    CDB->calib_status = Compass_info->calib_status;
+    CDB->data_state = Compass_info->data_state;
     CDB->true_azimuth = Compass_info->true_azimuth;
         
-    return MAG_OK;
-}
-
-/**
- * This is a function to Compass_LatchData.
- * Input: Glavity data.
- * Return: Compass_Start status: Correct:0, error:1.
- */
-unsigned char Compass_LatchData(axis_du_t *GDB)
-{
-    unsigned char ret;
-    /* Get the angle from compass. */
-    ret = Compass_Direction(GDB, &Compass_Data);
-    if(ret != MAG_OK){
-        dbg_err("Compass_Direction latch failed.\n");
-    }
-
-    if(Compass_Data.state == LOCKED){
-        dbg_info("Info: True_azimuth(%d) = %4.4f\n", Compass_Data.state , Compass_Data.true_azimuth);
-    }
-
     return MAG_OK;
 }
 
@@ -230,6 +218,9 @@ unsigned char Compass_LatchData(axis_du_t *GDB)
  */
 unsigned char Compass_Start(void)
 {
+    /* Set ODR. */
+    Compass_dev->data.mode = AK09918_NORMAL;
+    
     Compass_ReadEn = 1;
     return 0;
 }
@@ -242,6 +233,10 @@ unsigned char Compass_Start(void)
 unsigned char Compass_Stop(void)
 {
     if(Compass_ReadEn){
+
+        /* Push module to sleep. */
+        Compass_Sleep();
+
         Compass_ReadEn = 0;
     }
     return 0;
@@ -255,6 +250,43 @@ unsigned char Compass_Stop(void)
 float Compass_Getdata(void)
 {
     return Compass_Data.true_azimuth;
+}
+
+/**
+ * This is a function to take compass azimuth angle.
+ * Input: Void.
+ * Return: Status.
+ */
+unsigned char Compass_Getstatus(void)
+{
+    return Compass_Data.calib_status;
+}
+
+/**
+ * This is a function to calibnate compass.
+ * Input: Void.
+ * Return: Status.
+ */
+unsigned char Compass_SetCalib(void)
+{
+    unsigned char ret;
+    /* Start first magnetic calibnation. */
+    TickType_t Compass_Tickstart, Compass_Tickend;
+    Compass_Tickstart = xTaskGetTickCount();
+    
+    ret = Compass_Calibnation(&Compass_dev->data);
+    if(ret != MAG_OK){
+        dbg_err("Compass_Calibnation failed.\n");
+    }
+    
+    Compass_Tickend = xTaskGetTickCount();
+    dbg_info("Compass_Calibnation use time = %d\n", Compass_Tickend - Compass_Tickstart);
+
+    Compass_info->calib_status = LOCKED;
+
+    vTaskDelay(100);
+
+    return 1;
 }
 
 /* End of this file. */

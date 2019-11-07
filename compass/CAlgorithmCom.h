@@ -30,7 +30,7 @@ typedef enum{
 }mag4retinfo_t;
 
 #endif
-#define MAG_INT_TIME        500     /* The number of sample points required for initialization. */
+#define MAG_INT_TIME        120     /* The number of sample points required for initialization. */
 #define AXIS_NUM            3       /* Number of Sensor Axis Number. */
 
 #define MagDecl8Fuzhou      -4.5f   /* True north degree(Check from NASA).*/
@@ -54,7 +54,10 @@ typedef struct {
     /* True azimuth in your current location. */
     float true_azimuth;
     /* Magnetometer state. */
-    mag4com_state_t state;
+    mag4com_state_t data_state;
+    /* Calibnate state. */
+    mag4com_state_t calib_status;
+
 }mag4com_info_t;
 
 #endif

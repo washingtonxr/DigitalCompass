@@ -14,10 +14,10 @@
 #define CALGORITHM_H
 
 #include "CAlgorithmCom.h"
-
+#if 0
 /* Sign for debugging. */
-#define CA_DEBUG            0
-
+#define CA_DEBUG            1
+#endif
 /* Parameter for algorithm. */
 #define CAVERSION           0.10    /* Main algorithm version. */
 #define PI                  3.141592653589793638f

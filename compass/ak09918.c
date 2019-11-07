@@ -74,7 +74,7 @@ int ak09918_is_ready(AK09918_dev_t* dev)
     uint8_t ret;
     ret = I2C_1_ReadBytes(dev->addr, AK09918_ST1, 1, &buf);
     if (ret != 0) {
-        DebugPrintf("Error: AK09918_ERR_READ_FAILED = %02x\n", buf);
+        dbg_err("Error: AK09918_ERR_READ_FAILED = %02x\n", buf);
         return AK09918_ERR_READ_FAILED;
     }
     if (buf & AK09918_DRDY_BIT){
@@ -93,7 +93,7 @@ int ak09918_is_skip(AK09918_dev_t* dev)
         return AK09918_ERR_READ_FAILED;
     }
     if (buf & AK09918_DOR_BIT){
-        DebugPrintf("Error: AK09918_ERR_DOR = %02x\n", buf);
+        dbg_err("Error: AK09918_ERR_DOR = %02x\n", buf);
         return AK09918_ERR_DOR;
     }
     return AK09918_ERR_OK;
@@ -108,9 +108,8 @@ int ak09918_read(AK09918_dev_t* dev)
     
 	ret = ak09918_read_raw(dev, &tx, &ty, &tz);
     
-    /* X, Y axis is upside down on the board.*/
-	dev->value.axis[0] = -tx * COEF;
-	dev->value.axis[1] = -ty * COEF;
+	dev->value.axis[0] = tx * COEF;
+	dev->value.axis[1] = ty * COEF;
 	dev->value.axis[2] = tz * COEF;
 	return ret;
 }
@@ -128,7 +127,7 @@ int ak09918_read_raw(AK09918_dev_t* dev, int32_t *rx, int32_t *ry, int32_t *rz)
 				break;
 			}
 			if (count++ >= 15) {
-                DebugPrintf("Error: AK09918_ERR_TIMEOUT = %d\n", count);
+                dbg_err("Error: AK09918_ERR_TIMEOUT = %d\n", count);
 				return AK09918_ERR_TIMEOUT;
 			}
             vTaskDelay(1);
@@ -144,7 +143,7 @@ int ak09918_read_raw(AK09918_dev_t* dev, int32_t *rx, int32_t *ry, int32_t *rz)
     I2C_1_ReadBytes(dev->addr, AK09918_HXL, sizeof(buf), buf);
 #endif
 	if (buf[7] & AK09918_HOFL_BIT) {
-        DebugPrintf("Error: AK09918_ERR_OVERFLOW = %d\n", buf[7]);
+        dbg_err("Error: AK09918_ERR_OVERFLOW = %d\n", buf[7]);
 		return AK09918_ERR_OVERFLOW;
 	}
 	*rx = *(int16_t*)&buf[0];
@@ -179,7 +178,7 @@ int ak09918_self_test(AK09918_dev_t* dev)
 			break;
 		}
 		if (ret == AK09918_ERR_READ_FAILED) {
-            DebugPrintf("Error: AK09918_ERR_READ_FAILED = %d\n", ret);
+            dbg_err("Error: AK09918_ERR_READ_FAILED = %d\n", ret);
 			ak09918_set_mode(dev, l_mode);
 			return ret;
 		}
@@ -242,7 +241,7 @@ int ak09918_init(AK09918_dev_t *dev)
     //DebugPrintf("Info: %02x\n", buf);
 #if 1
     if(buf != 0x48){
-        DebugPrintf("Error: Read Company's id failed(%08x).\n", buf);
+        dbg_err("Error: Read Company's id failed(%08x).\n", buf);
         return AK09918_ERR_READ_FAILED;
     }
 #endif
@@ -255,7 +254,7 @@ int ak09918_init(AK09918_dev_t *dev)
     //DebugPrintf("Info: %02x\n", buf);
 #if 1
     if(buf != 0x0C){
-        DebugPrintf("Error: Read chip's id failed(%08x).\n", buf);
+        dbg_err("Error: Read chip's id failed(%08x).\n", buf);
         return AK09918_ERR_READ_FAILED;
     }
 #endif
@@ -313,20 +312,19 @@ int ak09918_get_data(AK09918_dev_t *dev)
     ret = ak09918_is_skip(dev);
     if (ret == AK09918_ERR_DOR) {
     	if(delay > 0) delay--;
-    	DebugPrintf("Error: %s usleep = %d us(CONT)\n", ak09918_err_string(ret), (int)delay);
+    	dbg_err("Error: %s usleep = %d us(CONT)\n", ak09918_err_string(ret), (int)delay);
     }
     
     /* Acquire data from FIFO. */
     ret = ak09918_read(dev);
     if (ret != AK09918_ERR_OK) {
-    	DebugPrintf("Error: %s\n", ak09918_err_string(ret));
-    	//vTaskDelay(100);
+    	dbg_err("Error: %s\n", ak09918_err_string(ret));
         return AK09918_ERR_NOT_RDY;
     }
     
-#if 1
+#if 0
     /* Print magnetic density in uT. */
-    DebugPrintf("%7.2lf\t%7.2lf\t%7.2lf\n", dev->value.axis[0], dev->value.axis[1], dev->value.axis[2]);
+    DebugPrintf("Info(uT): %7.2lf\t%7.2lf\t%7.2lf\t", dev->value.axis[0], dev->value.axis[1], dev->value.axis[2]);
 #endif
 
     return 0;
@@ -404,11 +402,11 @@ uint16_t ak09918_get_direction(axis_dblock_t *GDB, AK09918_dev_t *CDB)
     dir_y = (double)CDB->y*cos(roll) - (double)CDB->z*sin(roll);
 #else   /* BW02 */
     /* Print magnetic density in uT. */
-#if 1
+#if 0
     DebugPrintf("Info: ACC:%7.2lf\t%7.2lf\t%7.2lf\n", GDB->sample_block[0].axia_data[GDB_DN].axis[0], \
         GDB->sample_block[0].axia_data[GDB_DN].axis[1], GDB->sample_block[0].axia_data[GDB_DN].axis[2]);
 
-    DebugPrintf("Info: MAG:%7.2lf\t%7.2lf\t%7.2lf\n", CDB->value.axis[0] , CDB->value.axis[1], CDB->value.axis[2]);
+    DebugPrintf("Info: MAG:%7.2lf\t%7.2lf\t%7.2lf\n", -CDB->value.axis[0] , -CDB->value.axis[1], CDB->value.axis[2]);
 #endif
     pitch = atan2((double)-GDB->sample_block[0].axia_data[GDB_DN].axis[0], \
         sqrt(pow((long)GDB->sample_block[0].axia_data[GDB_DN].axis[2], 2) \
@@ -426,8 +424,8 @@ uint16_t ak09918_get_direction(axis_dblock_t *GDB, AK09918_dev_t *CDB)
      * 1.dir_x = (double)mag_x*cos(pitch) + (double)mag_y*sin(roll)*sin(pitch) + (double)mag_z*cos(roll)*sin(pitch);
      * 2.dir_y = (double)mag_y*cos(roll) - (double)mag_z*sin(roll);
      */
-    dir_x = (double)(CDB->value.axis[0])*cos(pitch) + (double)(CDB->value.axis[1])*sin(roll)*sin(pitch) + (double)CDB->value.axis[2]*cos(roll)*sin(pitch);
-    dir_y = (double)(CDB->value.axis[1])*cos(roll) - (double)CDB->value.axis[2]*sin(roll);
+    dir_x = (double)(-CDB->value.axis[0])*cos(pitch) + (double)(-CDB->value.axis[1])*sin(roll)*sin(pitch) + (double)CDB->value.axis[2]*cos(roll)*sin(pitch);
+    dir_y = (double)(-CDB->value.axis[1])*cos(roll) - (double)CDB->value.axis[2]*sin(roll);
 #endif
 #endif
     azimuth = abs((atan2(dir_y, dir_x)/3.1415976)*360);

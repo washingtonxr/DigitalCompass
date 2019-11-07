@@ -26,7 +26,9 @@ typedef struct{
     /* True azimuth in your current location. */
     float true_azimuth;
     /* Magnetometer state. */
-    mag4com_state_t state;
+    mag4com_state_t data_state;
+    /* Calibnate state. */
+    mag4com_state_t calib_status;
 }Compass_info_t;
 
 extern unsigned char Compass_ReadEn;
@@ -98,6 +100,19 @@ unsigned char Compass_Stop(void);
  */
 float Compass_Getdata(void);
 
+/**
+ * This is a function to take compass azimuth angle.
+ * Input: Void.
+ * Return: Status.
+ */
+unsigned char Compass_Getstatus(void);
+
+/**
+ * This is a function to calibnate compass.
+ * Input: Void.
+ * Return: Status.
+ */
+unsigned char Compass_SetCalib(void);
 
 #endif
 /* End of this file. */

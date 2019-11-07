@@ -90,14 +90,23 @@ unsigned char mdata_detect_direction(mag4com_info_t *data)
 #endif
 
     /* Calculate azimuth. */
-    azimuth = (-atan2(magvector_y, magvector_x)/PI)*180 + 180;
+    azimuth = (-atan2(magvector_y, magvector_x)/PI)*180;
+    if(azimuth < 0){
+        azimuth += 360;
+    }
 
-#ifdef CA_DEBUG
+#if 1
     printf("azimuth = %4.4f\n", azimuth);
 #endif
 
-    /* Calculate true azimuth. */
-    data->true_azimuth = azimuth - MagDecl8Fuzhou;
+    if(azimuth - MagDecl8Fuzhou > 360){
+        data->true_azimuth = azimuth - MagDecl8Fuzhou - 360;
+    }else if(azimuth - MagDecl8Fuzhou < 0){
+        data->true_azimuth = 360 + azimuth - MagDecl8Fuzhou;
+    }else{
+        /* Calculate true azimuth. */
+        data->true_azimuth = azimuth - MagDecl8Fuzhou;
+    }
 
 #ifdef CA_DEBUG
     printf("true_azimuth = %4.4f\n", data->true_azimuth);
@@ -138,10 +147,12 @@ unsigned char mdata_declination(AK09918_dev_t *dev, Compass_delay_func c_delay)
     for(i = 0; i < AXIS_NUM; i++){
         caldb.max.axis[i] = -5000.0f;
         caldb.min.axis[i] = 5000.0f;
+#if 0
         printf("Max:%f\tMin:%f\n", caldb.max.axis[i], caldb.min.axis[i]);
+#endif
     }
     
-#if 1
+#if 0
     printf("Compass declinating start: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
 #endif
 
@@ -160,7 +171,7 @@ unsigned char mdata_declination(AK09918_dev_t *dev, Compass_delay_func c_delay)
         c_delay(50);
     }
 
-#if 1
+#if 0
     printf("Done.\n");
 #endif
 
